@@ -1,4 +1,3 @@
-
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -39,7 +38,6 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
           E: letterToIndex('E'),
           K: letterToIndex('K'),
           L: letterToIndex('L'),
-          // ... rest of the letters are processed the same
           O: letterToIndex('O'),
           Q: letterToIndex('Q'),
           AH: letterToIndex('AH'),
@@ -144,32 +142,26 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
           enhoyOrders.forEach((order, i) => {
             if (i > 0) doc.addPage([100, 150], 'portrait');
             
-            // --- HEADER DINÁMICO (NOMBRE DEL USUARIO) ---
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(18);
             doc.setFont('helvetica', 'bold');
-            // Si el nombre es muy largo, lo cortamos o ajustamos (aquí forzamos mayúsculas)
             const displayHeader = userName.toUpperCase();
             doc.text(displayHeader, pageWidth / 2, 10, { align: 'center' });
 
-            // --- COMUNA BANNER ---
             doc.setFillColor(0, 0, 0);
             doc.rect(m, 14, contentWidth, 14, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(18);
             doc.text(order.comuna.toUpperCase(), pageWidth / 2, 23, { align: 'center' });
 
-            // --- FECHA (Arriba) ---
             doc.setTextColor(100, 100, 100);
             doc.setFontSize(11);
             doc.setFont('helvetica', 'normal');
             doc.text(`Fecha: ${order.fecha}`, pageWidth - m, 34, { align: 'right' });
 
-            // Línea separadora
             doc.setDrawColor(220, 220, 220);
             doc.line(m, 37, pageWidth - m, 37);
 
-            // --- DESTINATARIO ---
             doc.setTextColor(120, 120, 120);
             doc.setFontSize(10);
             doc.text('Destinatario:', m, 45);
@@ -182,13 +174,11 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
 
             let currentY = 52 + (nameLines.length * 6);
 
-            // --- TELÉFONO ---
             doc.setFontSize(12);
             doc.text(`Tel: ${order.telefono}`, m, currentY);
 
             currentY += 8;
 
-            // --- DIRECCIÓN ---
             doc.setTextColor(120, 120, 120);
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
@@ -202,7 +192,6 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
 
             currentY = currentY + 6 + (addrLines.length * 5.5);
 
-            // --- NOTAS / REFERENCIA ---
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
             doc.text('Notas:', m, currentY + 5);
@@ -212,7 +201,6 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
 
             currentY += 5 + (noteLines.length * 5);
 
-            // --- OBSERVACIÓN ---
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
             doc.text('Obs:', m, currentY + 5);
@@ -220,14 +208,12 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
             const obsLines = doc.splitTextToSize(order.observaciones || '-', contentWidth - 12);
             doc.text(obsLines, m + 11, currentY + 5);
 
-            // --- PRECIO (Esquina Inferior Derecha) ---
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(26);
             doc.setFont('helvetica', 'bold');
             const priceText = `$${moneyIntEnhoy(order.monto).toLocaleString('es-CL')}`;
             doc.text(priceText, pageWidth - m, pageHeight - 12, { align: 'right' });
 
-            // --- FOOTER ---
             doc.setDrawColor(240, 240, 240);
             doc.line(m, pageHeight - 8, pageWidth - m, pageHeight - 8);
             doc.setFontSize(8);
@@ -251,7 +237,7 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
           }
         });
       },
-      error: (err) => reject(err)
+      error: (err: any) => reject(err)
     });
   });
 };
