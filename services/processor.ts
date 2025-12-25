@@ -17,7 +17,11 @@ export interface GeneratedFile {
   filename: string;
 }
 
-export const processCSV = async (file: File, userName: string): Promise<{ files: GeneratedFile[]; stats: any }> => {
+export const processCSV = async (
+  file: File, 
+  userName: string, 
+  customDate?: string
+): Promise<{ files: GeneratedFile[]; stats: any }> => {
   const text = await file.text();
   const sep = detectSeparator(text);
 
@@ -75,14 +79,30 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
           return reject(new Error("No se encontraron pedidos con estado EMBALAR-ZM o EMBALAR-ENHOY"));
         }
 
+        const extractOrderId = (name: string): number => {
+          const match = name.match(/#?(\d+)/);
+          return match ? parseInt(match[1], 10) : 0;
+        };
+
+        enhoyOrders.sort((a, b) => extractOrderId(a.pedidoNombre) - extractOrderId(b.pedidoNombre));
+
         const generatedFiles: GeneratedFile[] = [];
         const timestamp = getTimestamp();
+        
+        let selectedDateDisplay = "";
+        if (customDate) {
+          const [y, m, d] = customDate.split('-');
+          selectedDateDisplay = `${d}/${m}/${y}`;
+        } else {
+          const today = new Date();
+          selectedDateDisplay = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+        }
 
         // 1. ZM XLSX Generation
         if (zmOrders.length > 0) {
           const zmData = zmOrders.map(o => ({
             "Numero de tracking": o.tracking,
-            "Fecha de venta": o.fecha,
+            "Fecha de venta": selectedDateDisplay,
             "Destinatario": o.destinatario,
             "Teléfono de contacto": o.telefono,
             "Dirección": o.direccion,
@@ -103,24 +123,39 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
           });
         }
 
-        // 2. ENHOY XLSX Generation
+        // 2. ENHOY XLSX Generation (Con pestañas Instrucciones y Planilla Carga)
         if (enhoyOrders.length > 0) {
           const enhoyData = enhoyOrders.map(o => ({
             "NOMBRE Y APELLIDO": o.pedidoNombre,
             "DIRECCION": o.direccion,
-            "DEPARTAMENTO": o.observaciones,
-            "EXTRA": o.referencia,
+            "CASA/DEPTO./OFICINA": o.observaciones,
+            "INDICACIONES GENERALES": o.referencia,
             "COMUNA": o.comuna,
             "CORREO": "",
             "TELEFONO": o.telefono,
-            "Cambio": o.reversa,
-            "Monto": moneyIntEnhoy(o.monto),
-            "PROVEEDOR": userName.toUpperCase()
+            "CAMBIO": o.reversa,
+            "MONTO": moneyIntEnhoy(o.monto)
           }));
-          const ws = XLSX.utils.json_to_sheet(enhoyData);
-          ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
           const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, "Pedidos ENHOY");
+          
+          // Hoja 1: Instrucciones
+          const wsInstr = XLSX.utils.aoa_to_sheet([
+            ["INSTRUCCIONES DE CARGA"],
+            [""],
+            ["1. Esta planilla contiene los pedidos marcados como EMBALAR-ENHOY."],
+            ["2. La hoja 'Planilla Carga' contiene la información necesaria para el transporte."],
+            ["3. No modifique los encabezados de la columna."],
+            [""],
+            ["Fecha de proceso:", selectedDateDisplay]
+          ]);
+          XLSX.utils.book_append_sheet(wb, wsInstr, "Instrucciones");
+
+          // Hoja 2: Planilla Carga
+          const wsData = XLSX.utils.json_to_sheet(enhoyData);
+          wsData['!freeze'] = { xSplit: 0, ySplit: 1 };
+          XLSX.utils.book_append_sheet(wb, wsData, "Planilla Carga");
+
           const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
           generatedFiles.push({
             blob: new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
@@ -136,53 +171,75 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
 
           const pageWidth = 100;
           const pageHeight = 150;
-          const m = 3;
+          const m = 5;
           const contentWidth = pageWidth - (m * 2);
 
           enhoyOrders.forEach((order, i) => {
             if (i > 0) doc.addPage([100, 150], 'portrait');
             
+            // NOMBRE TIENDA - Negro Puro y Negrita
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(18);
+            doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
             doc.text(userName.toUpperCase(), pageWidth / 2, 10, { align: 'center' });
 
+            // COMUNA
             doc.setFillColor(0, 0, 0);
-            doc.rect(m, 14, contentWidth, 14, 'F');
+            doc.rect(m, 14, contentWidth, 16, 'F');
             doc.setTextColor(255, 255, 255);
-            doc.text(order.comuna.toUpperCase(), pageWidth / 2, 23, { align: 'center' });
+            doc.setFontSize(20);
+            doc.text(order.comuna.toUpperCase(), pageWidth / 2, 25, { align: 'center' });
 
+            // FECHA - Negro y Negrita
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`Fecha: ${order.fecha}`, pageWidth - m, 34, { align: 'right' });
-
+            doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
-            doc.text('Destinatario:', m, 45);
+            doc.text(`Fecha: ${selectedDateDisplay}`, pageWidth - m, 36, { align: 'right' });
+
+            // DESTINATARIO
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.text('DESTINATARIO:', m, 45);
             doc.setFontSize(14);
             const nameLines = doc.splitTextToSize(order.pedidoNombre, contentWidth);
             doc.text(nameLines, m, 52);
 
-            let currentY = 52 + (nameLines.length * 7);
+            let currentY = 52 + (nameLines.length * 6);
             doc.setFontSize(12);
             doc.text(`Tel: ${order.telefono}`, m, currentY);
 
             currentY += 10;
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
-            doc.text('Dirección:', m, currentY);
-            doc.setFontSize(12);
+            doc.text('DIRECCIÓN:', m, currentY);
+            doc.setFontSize(13);
             const addrLines = doc.splitTextToSize(order.direccion, contentWidth);
             doc.text(addrLines, m, currentY + 6);
 
             currentY += 6 + (addrLines.length * 6);
             doc.setFontSize(10);
-            doc.text('Notas:', m, currentY);
-            const noteLines = doc.splitTextToSize(order.referencia || '-', contentWidth - 15);
-            doc.text(noteLines, m + 15, currentY);
+            doc.setFont('helvetica', 'bold');
+            doc.text('REF:', m, currentY);
+            doc.setFont('helvetica', 'normal');
+            const refLines = doc.splitTextToSize(order.referencia || '-', contentWidth - 12);
+            doc.text(refLines, m + 12, currentY);
 
-            doc.setFontSize(26);
-            doc.text(`$${moneyIntEnhoy(order.monto).toLocaleString('es-CL')}`, pageWidth - m, pageHeight - 12, { align: 'right' });
+            currentY += Math.max(6, (refLines.length * 5)) + 4; 
+            
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('OBS:', m, currentY);
+            doc.setFont('helvetica', 'normal');
+            const obsLines = doc.splitTextToSize(order.observaciones || '-', contentWidth - 12);
+            doc.text(obsLines, m + 12, currentY);
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(28);
+            doc.text(`Total: $${moneyIntEnhoy(order.monto).toLocaleString('es-CL')}`, pageWidth - m, pageHeight - 10, { align: 'right' });
+            
+            doc.setDrawColor(200, 200, 200);
+            doc.line(m, pageHeight - 20, pageWidth - m, pageHeight - 20);
           });
 
           const pdfBlob = doc.output('blob');
