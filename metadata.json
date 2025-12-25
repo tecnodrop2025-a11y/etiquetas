@@ -1,0 +1,5 @@
+{
+  "name": "TecnoDrop - Logistics CSV Processor",
+  "description": "A robust tool for processing Chilean logistics CSV files, generating specialized XLSX files for ZM and ENHOY, and creating printable PDF labels for delivery optimization.",
+  "requestFramePermissions": []
+}
