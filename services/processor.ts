@@ -67,7 +67,7 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
               pedidoNombre: (row[mappings.BD] || '').trim() || (row[mappings.C] || '').trim()
             };
             if (status === 'EMBALAR-ZM') zmOrders.push(mapped);
-            else enhoyOrders.push(mapped);
+            else if (status === 'EMBALAR-ENHOY') enhoyOrders.push(mapped);
           }
         });
 
@@ -127,7 +127,7 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
             filename: `ENHOY_Embalar_${timestamp}.xlsx`
           });
 
-          // PDF ETIQUETAS - FORMATO 100x150mm
+          // PDF ETIQUETAS
           const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
@@ -136,7 +136,7 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
 
           const pageWidth = 100;
           const pageHeight = 150;
-          const m = 3; // Margen de 3mm
+          const m = 3;
           const contentWidth = pageWidth - (m * 2);
 
           enhoyOrders.forEach((order, i) => {
@@ -145,80 +145,44 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(18);
             doc.setFont('helvetica', 'bold');
-            const displayHeader = userName.toUpperCase();
-            doc.text(displayHeader, pageWidth / 2, 10, { align: 'center' });
+            doc.text(userName.toUpperCase(), pageWidth / 2, 10, { align: 'center' });
 
             doc.setFillColor(0, 0, 0);
             doc.rect(m, 14, contentWidth, 14, 'F');
             doc.setTextColor(255, 255, 255);
-            doc.setFontSize(18);
             doc.text(order.comuna.toUpperCase(), pageWidth / 2, 23, { align: 'center' });
 
-            doc.setTextColor(100, 100, 100);
-            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             doc.text(`Fecha: ${order.fecha}`, pageWidth - m, 34, { align: 'right' });
 
-            doc.setDrawColor(220, 220, 220);
-            doc.line(m, 37, pageWidth - m, 37);
-
-            doc.setTextColor(120, 120, 120);
-            doc.setFontSize(10);
-            doc.text('Destinatario:', m, 45);
-
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
+            doc.text('Destinatario:', m, 45);
+            doc.setFontSize(14);
             const nameLines = doc.splitTextToSize(order.pedidoNombre, contentWidth);
             doc.text(nameLines, m, 52);
 
-            let currentY = 52 + (nameLines.length * 6);
-
+            let currentY = 52 + (nameLines.length * 7);
             doc.setFontSize(12);
             doc.text(`Tel: ${order.telefono}`, m, currentY);
 
-            currentY += 8;
-
-            doc.setTextColor(120, 120, 120);
+            currentY += 10;
             doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.text('Dirección:', m, currentY);
-            
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
+            doc.text('Dirección:', m, currentY);
+            doc.setFontSize(12);
             const addrLines = doc.splitTextToSize(order.direccion, contentWidth);
             doc.text(addrLines, m, currentY + 6);
 
-            currentY = currentY + 6 + (addrLines.length * 5.5);
-
+            currentY += 6 + (addrLines.length * 6);
             doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Notas:', m, currentY + 5);
-            doc.setFont('helvetica', 'normal');
+            doc.text('Notas:', m, currentY);
             const noteLines = doc.splitTextToSize(order.referencia || '-', contentWidth - 15);
-            doc.text(noteLines, m + 14, currentY + 5);
+            doc.text(noteLines, m + 15, currentY);
 
-            currentY += 5 + (noteLines.length * 5);
-
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Obs:', m, currentY + 5);
-            doc.setFont('helvetica', 'normal');
-            const obsLines = doc.splitTextToSize(order.observaciones || '-', contentWidth - 12);
-            doc.text(obsLines, m + 11, currentY + 5);
-
-            doc.setTextColor(0, 0, 0);
             doc.setFontSize(26);
-            doc.setFont('helvetica', 'bold');
-            const priceText = `$${moneyIntEnhoy(order.monto).toLocaleString('es-CL')}`;
-            doc.text(priceText, pageWidth - m, pageHeight - 12, { align: 'right' });
-
-            doc.setDrawColor(240, 240, 240);
-            doc.line(m, pageHeight - 8, pageWidth - m, pageHeight - 8);
-            doc.setFontSize(8);
-            doc.setTextColor(180, 180, 180);
-            doc.text('TecnoDrop - Impresión Térmica', m, pageHeight - 4);
+            doc.text(`$${moneyIntEnhoy(order.monto).toLocaleString('es-CL')}`, pageWidth - m, pageHeight - 12, { align: 'right' });
           });
 
           const pdfBlob = doc.output('blob');
@@ -237,7 +201,7 @@ export const processCSV = async (file: File, userName: string): Promise<{ files:
           }
         });
       },
-      error: (err: any) => reject(err)
+      error: (err: Error) => reject(err)
     });
   });
 };
