@@ -11,26 +11,23 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         
-        /* Estilo para el icono nativo del input date */
         input[type="date"]::-webkit-calendar-picker-indicator {
             cursor: pointer;
             border-radius: 4px;
             margin-right: 2px;
-            /* Invertir y rotar para lograr un tono similar al indigo-600 */
             filter: invert(28%) sepia(91%) saturate(1974%) hue-rotate(227deg) brightness(94%) contrast(101%);
         }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "jspdf": "https://esm.sh/jspdf@^3.0.4",
-    "jszip": "https://esm.sh/jszip@^3.10.1",
-    "xlsx": "https://esm.sh/xlsx@^0.18.5",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "papaparse": "https://esm.sh/papaparse@^5.5.3",
+    "xlsx": "https://esm.sh/xlsx@^0.18.5",
+    "jspdf": "https://esm.sh/jspdf@^3.0.4",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "vite": "https://esm.sh/vite@^7.3.0",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
@@ -39,5 +36,7 @@
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
     <div id="root"></div>
+    <!-- Punto de entrada crítico para que Vite pueda construir la app -->
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>
