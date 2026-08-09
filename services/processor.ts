@@ -174,72 +174,136 @@ export const processCSV = async (
           const m = 5;
           const contentWidth = pageWidth - (m * 2);
 
+          // Base64 estático para el QR que contiene "1"
+          const QR_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAGQAAABkAQMAAABKLAcXAAAABlBMVEX///8AAABVwtN+AAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAwklEQVQ4jaXUsQ2EMAwFUEcUKdkANoG1UiBdpBSsBZuEDSgpUP7ZQeiguzhuotd8YTuB6FUfAN7gGPmMBXJENmB3A1FToRFWMoceoU4hkdPId9WSjmLrH/0pJNMN2+5+s/5PubrXShXiTIvYzms8pgqt/HUbkOigIqXenoY7yu2oJdPo2jtTKTKR57o7E+1ZJK5my/J65d0C89Lj1EtulkQbyFEgeR1XSq3SPc8q4d5tgeRVXSmTXnme/J94bEWhV30BooNO2JwYHyYAAAAASUVORK5CYII=';
+
+          // Función auxiliar para dibujar ícono de persona
+          const drawPersonIcon = (d: jsPDF, x: number, y: number) => {
+            d.circle(x, y - 1, 1.2, 'S');
+            d.path([{op: 'm', c: [x - 1.8, y + 2.5]}, {op: 'l', c: [x - 1.8, y + 1.5]}, {op: 'c', c: [x - 1.8, y + 0.5, x + 1.8, y + 0.5, x + 1.8, y + 1.5]}, {op: 'l', c: [x + 1.8, y + 2.5]}]);
+          };
+
+          // Función auxiliar para dibujar ícono de teléfono
+          const drawPhoneIcon = (d: jsPDF, x: number, y: number) => {
+            d.path([{op: 'm', c: [x - 1, y - 1.5]}, {op: 'l', c: [x + 1, y - 1.5]}, {op: 'l', c: [x + 1.5, y + 1.5]}, {op: 'l', c: [x - 1.5, y + 1.5]}, {op: 'h'}]);
+            d.circle(x, y + 1.5, 0.8, 'S');
+          };
+
+          // Función auxiliar para dibujar ícono de pin (ubicación)
+          const drawLocationIcon = (d: jsPDF, x: number, y: number) => {
+            d.circle(x, y - 1, 1.5, 'S');
+            d.line(x, y + 0.5, x, y + 2.5);
+          };
+
           enhoyOrders.forEach((order, i) => {
             if (i > 0) doc.addPage([100, 150], 'portrait');
             
-            // NOMBRE TIENDA - Negro Puro y Negrita
+            // LOGO & TÍTULO (Transalianza Spa)
+            // Se dibuja un placeholder circular azul como logo en caso de no tener la imagen.
+            // Para cambiar a la imagen usar: doc.addImage(LOGO_BASE64, 'PNG', 5, 5, 15, 15);
+            doc.setFillColor(41, 128, 185);
+            doc.circle(12, 12, 5, 'F');
+            doc.setFillColor(230, 126, 34);
+            doc.circle(14, 9, 2, 'F');
+            
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(16);
+            doc.setFontSize(22);
             doc.setFont('helvetica', 'bold');
-            doc.text(userName.toUpperCase(), pageWidth / 2, 10, { align: 'center' });
+            doc.text("Transalianza Spa", 22, 15);
 
-            // COMUNA
+            // CÓDIGO QR
+            doc.addImage(QR_BASE64, 'PNG', 5, 22, 38, 38);
+
+            // COMUNA (Rectángulo negro, borde redondeado)
             doc.setFillColor(0, 0, 0);
-            doc.rect(m, 14, contentWidth, 16, 'F');
+            doc.roundedRect(48, 22, 47, 8, 1.5, 1.5, 'F');
             doc.setTextColor(255, 255, 255);
-            doc.setFontSize(20);
-            doc.text(order.comuna.toUpperCase(), pageWidth / 2, 25, { align: 'center' });
+            doc.setFontSize(11);
+            doc.text(order.comuna.toUpperCase(), 71.5, 27.5, { align: 'center' });
 
-            // FECHA - Negro y Negrita
+            // FECHA (Con ícono de calendario)
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`Fecha: ${selectedDateDisplay}`, pageWidth - m, 36, { align: 'right' });
-
-            // DESTINATARIO
-            doc.setTextColor(0, 0, 0);
-            doc.setFont('helvetica', 'bold');
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            // Dibujar calendario
+            doc.rect(48, 33, 4, 4);
+            doc.line(48, 34.5, 52, 34.5);
+            doc.line(49, 32, 49, 33.5);
+            doc.line(51, 32, 51, 33.5);
+            
             doc.setFontSize(10);
-            doc.text('DESTINATARIO:', m, 45);
-            doc.setFontSize(14);
-            const nameLines = doc.splitTextToSize(order.pedidoNombre, contentWidth);
-            doc.text(nameLines, m, 52);
+            doc.setFont('helvetica', 'bold');
+            doc.text(selectedDateDisplay, 54, 36.5);
 
-            let currentY = 52 + (nameLines.length * 6);
-            doc.setFontSize(12);
-            doc.text(`Tel: ${order.telefono}`, m, currentY);
+            // RTE, VENTA, ENVIO
+            doc.setFont('helvetica', 'normal');
+            doc.text('Rte.: ', 48, 45);
+            doc.setFont('helvetica', 'bold');
+            doc.text(userName.toUpperCase(), 57, 45);
+
+            const orderId = extractOrderId(order.pedidoNombre) || extractOrderId(order.destinatario) || "S/N";
+            
+            doc.setFont('helvetica', 'normal');
+            doc.text('Venta: ', 48, 52);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`#${orderId}`, 60, 52);
+
+            doc.setFont('helvetica', 'normal');
+            doc.text('Envio: ', 48, 59);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`#${orderId}`, 60, 59);
+
+            // SECCIÓN DESTINATARIO
+            let currentY = 68;
+            doc.setFillColor(150, 150, 150);
+            doc.circle(7, currentY - 1.2, 1.2, 'F');
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(120, 120, 120);
+            doc.text('Destinatario', 10, currentY);
+
+            currentY += 8;
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            
+            // Extraer nombre (eliminar el ID y guiones si existen al principio)
+            const cleanName = order.destinatario.replace(/^#\d+\s*-\s*/, '').replace(/\s*-\s*$/, '');
+            
+            drawPersonIcon(doc, 7, currentY - 1);
+            doc.text(cleanName, 12, currentY);
+
+            drawPhoneIcon(doc, 55, currentY - 1);
+            doc.text(order.telefono, 60, currentY);
 
             currentY += 10;
-            doc.setFontSize(10);
+            drawLocationIcon(doc, 7, currentY - 1);
             doc.setFont('helvetica', 'bold');
-            doc.text('DIRECCIÓN:', m, currentY);
-            doc.setFontSize(13);
-            const addrLines = doc.splitTextToSize(order.direccion, contentWidth);
-            doc.text(addrLines, m, currentY + 6);
+            const addrLines = doc.splitTextToSize(order.direccion, contentWidth - 8);
+            doc.text(addrLines, 12, currentY);
 
-            currentY += 6 + (addrLines.length * 6);
-            doc.setFontSize(10);
+            currentY += (addrLines.length * 5) + 6;
             doc.setFont('helvetica', 'bold');
-            doc.text('REF:', m, currentY);
+            doc.text('Observación: ', 5, currentY);
             doc.setFont('helvetica', 'normal');
-            const refLines = doc.splitTextToSize(order.referencia || '-', contentWidth - 12);
-            doc.text(refLines, m + 12, currentY);
+            const obsLines = doc.splitTextToSize(order.observaciones || '-', contentWidth - 30);
+            doc.text(obsLines, 32, currentY);
 
-            currentY += Math.max(6, (refLines.length * 5)) + 4; 
-            
+            // SECCIÓN CAMPOS EXTRA
+            currentY += (obsLines.length * 5) + 8;
+            doc.setFillColor(150, 150, 150);
+            doc.circle(7, currentY - 1.2, 1.2, 'F');
             doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.text('OBS:', m, currentY);
             doc.setFont('helvetica', 'normal');
-            const obsLines = doc.splitTextToSize(order.observaciones || '-', contentWidth - 12);
-            doc.text(obsLines, m + 12, currentY);
+            doc.setTextColor(120, 120, 120);
+            doc.text('Campos extra', 10, currentY);
 
+            currentY += 8;
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(28);
-            doc.text(`Total: $${moneyIntEnhoy(order.monto).toLocaleString('es-CL')}`, pageWidth - m, pageHeight - 10, { align: 'right' });
-            
-            doc.setDrawColor(200, 200, 200);
-            doc.line(m, pageHeight - 20, pageWidth - m, pageHeight - 20);
+            doc.text('Total a pagar: ', 5, currentY);
+            doc.text(`$${moneyIntEnhoy(order.monto).toLocaleString('es-CL')}`, 32, currentY);
           });
 
           const pdfBlob = doc.output('blob');
