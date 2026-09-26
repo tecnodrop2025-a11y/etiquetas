@@ -146,7 +146,7 @@ export const processCSV = async (
           const csvContent = XLSX.utils.sheet_to_csv(wsCsv);
           generatedFiles.push({
             blob: new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }),
-            filename: `ZM_Embalar_${timestamp}.csv`
+            filename: `NOVACLIC_Embalar_${timestamp}.csv`
           });
 
 
