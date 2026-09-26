@@ -163,19 +163,8 @@ export const processCSV = async (
         }
 
 
-        // 2. ENHOY XLSX + PDF
+        // 2. ENHOY: solo PDF ETIQUETAS
         if (enhoyOrders.length > 0) {
-          const enhoyData = enhoyOrders.map(buildRow);
-          const wb = XLSX.utils.book_new();
-          const wsData = XLSX.utils.json_to_sheet(enhoyData);
-          wsData['!freeze'] = { xSplit: 0, ySplit: 1 };
-          XLSX.utils.book_append_sheet(wb, wsData, "Planilla Carga");
-          const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-          generatedFiles.push({
-            blob: new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-            filename: `ENHOY_Embalar_${timestamp}.xlsx`
-          });
-
           // PDF ETIQUETAS
           const doc = new jsPDF({
             orientation: 'portrait',
