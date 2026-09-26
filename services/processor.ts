@@ -1,4 +1,4 @@
-﻿import Papa from 'papaparse';
+import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import { OrderRow } from '../types';
@@ -132,19 +132,30 @@ export const processCSV = async (
           "enviame_tracking":      "",
         });
 
-        // 1. ZM XLSX
+        // 1. ZM: genera CSV + copia XLSX (SAC_NOVACLIC)
         if (zmOrders.length > 0) {
           const zmData = zmOrders.map(buildRow);
+
+          // 1a. ZM en formato CSV
           const ws = XLSX.utils.json_to_sheet(zmData);
-          ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, "Pedidos ZM");
-          const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+          const csvContent = XLSX.utils.sheet_to_csv(ws);
           generatedFiles.push({
-            blob: new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-            filename: `ZM_Embalar_${timestamp}.xlsx`
+            blob: new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }),
+            filename: `ZM_Embalar_${timestamp}.csv`
+          });
+
+          // 1b. Copia en XLSX con nombre SAC_NOVACLIC
+          const wsSac = XLSX.utils.json_to_sheet(zmData);
+          wsSac['!freeze'] = { xSplit: 0, ySplit: 1 };
+          const wbSac = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wbSac, wsSac, "Pedidos ZM");
+          const wbSacOut = XLSX.write(wbSac, { bookType: 'xlsx', type: 'array' });
+          generatedFiles.push({
+            blob: new Blob([wbSacOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+            filename: `SAC_NOVACLIC_${timestamp}.xlsx`
           });
         }
+
 
         // 2. ENHOY XLSX + PDF
         if (enhoyOrders.length > 0) {
