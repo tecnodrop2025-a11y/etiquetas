@@ -137,12 +137,18 @@ export const processCSV = async (
           const zmData = zmOrders.map(buildRow);
 
           // 1a. ZM en formato CSV
-          const ws = XLSX.utils.json_to_sheet(zmData);
-          const csvContent = XLSX.utils.sheet_to_csv(ws);
+          // Sanitizar: reemplazar saltos de línea dentro de los campos por un espacio
+          const sanitize = (val: string) => String(val ?? '').replace(/\r\n|\r|\n/g, ' ');
+          const zmDataClean = zmData.map(row =>
+            Object.fromEntries(Object.entries(row).map(([k, v]) => [k, sanitize(v as string)]))
+          );
+          const wsCsv = XLSX.utils.json_to_sheet(zmDataClean);
+          const csvContent = XLSX.utils.sheet_to_csv(wsCsv);
           generatedFiles.push({
             blob: new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }),
             filename: `ZM_Embalar_${timestamp}.csv`
           });
+
 
           // 1b. Copia en XLSX con nombre SAC_NOVACLIC
           const wsSac = XLSX.utils.json_to_sheet(zmData);
