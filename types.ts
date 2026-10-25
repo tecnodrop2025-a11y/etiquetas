@@ -31,5 +31,6 @@ export enum ProcessingState {
 export interface ProcessingResult {
   zmCount: number;
   enhoyCount: number;
+  rayosCount?: number;
   totalRows: number;
 }

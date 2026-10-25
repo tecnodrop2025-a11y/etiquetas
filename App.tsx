@@ -205,12 +205,15 @@ const App: React.FC = () => {
           {status === ProcessingState.COMPLETED && results && (
             <div className="bg-emerald-50 text-emerald-800 p-8 rounded-3xl animate-in zoom-in-95">
               <div className="flex items-center gap-3 mb-6"><CheckCircle className="w-6 h-6 text-emerald-500" /><h3 className="text-2xl font-black">¡Completado!</h3></div>
-              <div className="grid grid-cols-2 gap-6 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
                 <div className="bg-white p-5 rounded-2xl">
                   <p className="text-xs font-bold uppercase text-slate-400">ZM</p><p className="text-3xl font-black">{results.zmCount}</p>
                 </div>
                 <div className="bg-white p-5 rounded-2xl">
                   <p className="text-xs font-bold uppercase text-slate-400">ENHOY</p><p className="text-3xl font-black">{results.enhoyCount}</p>
+                </div>
+                <div className="bg-white p-5 rounded-2xl">
+                  <p className="text-xs font-bold uppercase text-slate-400">RAYOS</p><p className="text-3xl font-black">{results.rayosCount || 0}</p>
                 </div>
               </div>
               <button onClick={() => { setFile(null); setResults(null); setStatus(ProcessingState.IDLE); }} className="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl">NUEVA CARGA</button>

@@ -53,10 +53,11 @@ export const processCSV = async (
 
         const zmOrders: OrderRow[] = [];
         const enhoyOrders: OrderRow[] = [];
+        const rayosOrders: OrderRow[] = [];
 
         data.forEach((row) => {
           const status = (row[mappings.Q] || '').trim().toUpperCase();
-          if (status === 'EMBALAR-ZM' || status === 'EMBALAR-ENHOY') {
+          if (status === 'EMBALAR-ZM' || status === 'EMBALAR-ENHOY' || status === 'EMBALAR-RAYOS') {
             const mapped: OrderRow = {
               fecha:         toDMY(row[mappings.B]),
               destinatario:  (row[mappings.C] || '').trim(),
@@ -72,12 +73,13 @@ export const processCSV = async (
               pedidoNombre:  (row[mappings.BD] || '').trim() || (row[mappings.C] || '').trim(),
             };
             if (status === 'EMBALAR-ZM') zmOrders.push(mapped);
-            else enhoyOrders.push(mapped);
+            else if (status === 'EMBALAR-ENHOY') enhoyOrders.push(mapped);
+            else if (status === 'EMBALAR-RAYOS') rayosOrders.push(mapped);
           }
         });
 
-        if (zmOrders.length === 0 && enhoyOrders.length === 0) {
-          return reject(new Error("No se encontraron pedidos con estado EMBALAR-ZM o EMBALAR-ENHOY"));
+        if (zmOrders.length === 0 && enhoyOrders.length === 0 && rayosOrders.length === 0) {
+          return reject(new Error("No se encontraron pedidos con estado EMBALAR-ZM, EMBALAR-ENHOY o EMBALAR-RAYOS"));
         }
 
         const extractOrderId = (name: string): number => {
@@ -289,11 +291,90 @@ export const processCSV = async (
           });
         }
 
+        // 3. RAYOS XLSX
+        if (rayosOrders.length > 0) {
+          const RAYOS_HEADERS = [
+            "NRO. PEDIDO\n(OBLIGATORIO)",
+            "NOMBRE COMPLETO\n(OBLIGATORIO)",
+            "CELULAR\n(Sin +56)\n(OBLIGATORIO)",
+            "REGIÓN\n(OBLIGATORIO)",
+            "\nCOMUNA\n(OBLIGATORIO)",
+            "DIRECCION\n(OBLIGATORIO)",
+            "\nPAGO\n1 = ContraEntrega\n2 = Anticipado\n(OBLIGATORIO)",
+            "CÓDIGO\n(OBLIGATORIO)",
+            "NOMBRE_PRODUCTO\n(OBLIGATORIO)",
+            "CANTIDAD\n(OBLIGATORIO)",
+            "TOTAL\n(OBLIGATORIO)",
+            "DIRECCION REFERENCIA / INDICACION\n(OPCIONAL)",
+            "CANAL\n(OPCIONAL)\n\n1=Shopify\n2=Manual\n3=Excel\n4=Mercado Libre",
+            "ID_Externo\n(OPCIONAL)",
+            "NOMBRE_VENDEDOR\n(OPCIONAL)",
+            "ANCHO_CM\n(OPCIONAL)",
+            "ALTO_CM\n(OPCIONAL)",
+            "PROFUINDIDAD_CM\n(OPCIONAL)",
+            "PESO_KG\n(OPCIONAL)"
+          ];
+
+          const rayosRows = rayosOrders.map(o => {
+            const orderId = extractOrderId(o.pedidoNombre) || extractOrderId(o.destinatario) || extractOrderId(o.tracking) || o.tracking;
+            const cleanName = o.destinatario.replace(/^#\d+\s*-\s*/, '').replace(/\s*-\s*$/, '').trim();
+            
+            let phone = o.telefono.replace(/\D/g, '');
+            if (phone.startsWith('56') && phone.length > 9) {
+              phone = phone.substring(2);
+            }
+
+            const cleanObs = o.observaciones.replace(/\r\n|\r|\n/g, ' ').trim();
+            const cleanRef = (o.referencia || '').replace(/\r\n|\r|\n/g, ' ').trim();
+            const total = moneyIntEnhoy(o.monto);
+
+            return [
+              orderId,     // A = numero de orden
+              cleanName,   // B = Nombre
+              phone,       // C = numero de celular o telefono sin el +56 o 56
+              "Santiago",  // D = SIEMPRE DEBE DECIR SANTIAGO
+              o.comuna,    // E = comuna
+              o.direccion, // F = Direccion
+              1,           // G = siempre debe salir el "1"
+              "",          // H = CÓDIGO (vacio)
+              cleanObs,    // I = nomenclatura
+              1,           // J = siempre debe salir el "1"
+              total,       // K = Total
+              cleanRef,    // L = referencia
+              "",          // M = vacio
+              "",          // N = vacio
+              orderId,     // O = Numero de orden
+              "",          // P = vacio
+              "",          // Q = vacio
+              "",          // R = vacio
+              ""           // S = vacio
+            ];
+          });
+
+          const wsRayos = XLSX.utils.aoa_to_sheet([RAYOS_HEADERS, ...rayosRows]);
+          wsRayos['!freeze'] = { xSplit: 0, ySplit: 1 };
+          const wbRayos = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wbRayos, wsRayos, "Envios");
+          const wbRayosOut = XLSX.write(wbRayos, { bookType: 'xlsx', type: 'array' });
+
+          const pad = (n: number) => String(n).padStart(2, '0');
+          const now = new Date();
+          const fechaGen = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`;
+          const horaGen = `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+          const rayosFilename = `${fechaGen}_${horaGen}_transportadoraRayos.xlsx`;
+
+          generatedFiles.push({
+            blob: new Blob([wbRayosOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+            filename: rayosFilename
+          });
+        }
+
         resolve({
           files: generatedFiles,
           stats: {
             zmCount: zmOrders.length,
             enhoyCount: enhoyOrders.length,
+            rayosCount: rayosOrders.length,
             totalRows: data.length
           }
         });
