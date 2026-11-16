@@ -45,7 +45,7 @@ export const processCSV = async (
           L:  letterToIndex('L'),   // telefono
           O:  letterToIndex('O'),   // tracking
           Q:  letterToIndex('Q'),   // estado (filtro)
-          AH: letterToIndex('AH'),  // observaciones
+          AG: letterToIndex('AG'),  // nomenclatura (observaciones)
           BB: letterToIndex('BB'),  // reversa
           BC: letterToIndex('BC'),  // referencia
           BD: letterToIndex('BD'),  // pedidoNombre
@@ -67,7 +67,7 @@ export const processCSV = async (
               telefono:      (row[mappings.L] || '').trim(),
               tracking:      (row[mappings.O] || '').trim(),
               estado:        status,
-              observaciones: (row[mappings.AH] || '').trim(),
+              observaciones: (row[mappings.AG] || '').trim(),
               reversa:       (row[mappings.BB] || '').trim(),
               referencia:    (row[mappings.BC] || '').trim(),
               pedidoNombre:  (row[mappings.BD] || '').trim() || (row[mappings.C] || '').trim(),

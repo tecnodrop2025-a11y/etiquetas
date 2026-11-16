@@ -14,7 +14,7 @@ export interface OrderRow {
   telefono: string;     // L
   tracking: string;     // O
   estado: string;       // Q
-  observaciones: string;// AH
+  observaciones: string;// AG (nomenclatura)
   reversa: string;      // BB
   referencia: string;   // BC
   pedidoNombre: string; // BD
